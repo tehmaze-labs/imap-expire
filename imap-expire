@@ -28,31 +28,31 @@ class Expire(object):
     def __init__(self, options, config, name):
         self.options = options
         self.config = config
-        self.section = 'account %s' % (name,)
+        self.account = 'account %s' % (name,)
         self.expires = 'expires %s' % (name,)
 
     def connect(self):
-        if self.config.has_option(self.section, 'ssl') \
-            and self.config.getboolean(self.section, 'ssl'):
-            if self.config.has_option(self.section, 'port'):
-                port = self.config.getint(self.section, 'port')
+        if self.config.has_option(self.account, 'ssl') \
+            and self.config.getboolean(self.account, 'ssl'):
+            if self.config.has_option(self.account, 'port'):
+                port = self.config.getint(self.account, 'port')
             else:
                 port = 993
 
-            self.server = imaplib.IMAP4_SSL(self.config.get(self.section,
+            self.server = imaplib.IMAP4_SSL(self.config.get(self.account,
                 'hostname'), port)
 
         else:
-            if self.config.has_option(self.section, 'port'):
-                port = self.config.getint(self.section, 'port')
+            if self.config.has_option(self.account, 'port'):
+                port = self.config.getint(self.account, 'port')
             else:
                 port = 143
 
-            self.server = imaplib.IMAP4(self.config.get(self.section,
+            self.server = imaplib.IMAP4(self.config.get(self.account,
                 'hostname'), port)
 
     def login(self):
-        username = self.config.get(self.section, 'username')
+        username = self.config.get(self.account, 'username')
         password = self.get_password()
 
         if password:
@@ -61,13 +61,13 @@ class Expire(object):
             raise RuntimeError('No password for account')
 
     def get_password(self):
-        if self.config.has_option(self.section, 'password'):
-            return self.config.get(self.section, 'password')
+        if self.config.has_option(self.account, 'password'):
+            return self.config.get(self.account, 'password')
 
         else:
             username = '@'.join([
-                self.config.get(self.section, 'username'),
-                self.config.get(self.section, 'hostname'),
+                self.config.get(self.account, 'username'),
+                self.config.get(self.account, 'hostname'),
             ])
             if keyring:
                 password = keyring.get_password('mail', username)
@@ -82,11 +82,14 @@ class Expire(object):
         return password
 
     def expire(self):
+        ordered = self.config.has_option(self.account, 'ordered') and \
+            self.config.getboolean(self.account, 'ordered')
+
         for option in self.config.options(self.expires):
             days = self.config.getint(self.expires, option)
-            self.expire_folder(option, days)
+            self.expire_folder(option, days, ordered)
 
-    def expire_folder(self, name, days):
+    def expire_folder(self, name, days, ordered=False):
         print 'Expiring messages in "%s" odler than %d days' % (name, days)
         stat, data = self.server.select(name)
         if stat != 'OK':
@@ -128,6 +131,9 @@ class Expire(object):
                 else:
                     if self.options.verbose:
                         sys.stdout.write('.')
+
+                    if ordered:
+                        break
 
                 if self.options.verbose:
                     sys.stdout.flush()

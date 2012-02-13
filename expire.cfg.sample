@@ -1,11 +1,20 @@
 [account imap.maze.io]
+; Server hostname
 hostname = imap.maze.io
+; Server port
 port     = 993
-ssl      = 1
+; Enable SSL encryption
+ssl      = yes
+; Account username
 username = maze
 ; We use keyring, so password is not supplied from configuration
 ;password = secret
+; If the server gives messages ordered by date, we can stop comparing date swhen
+; we see a message that doesn't need to be purged
+ordered  = no
 
 [expires imap.maze.io]
+; Expire settings, keys are the exact IMAP folder names (including prefix/name
+; space), values are the number of days to expire
 INBOX.Trash          = 61
 INBOX.Systems.Cron   = 91
