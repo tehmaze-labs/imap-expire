@@ -1,0 +1,159 @@
+#! /usr/bin/python
+
+import ConfigParser
+import datetime
+import getpass
+import imaplib
+import keyring
+import os
+import re
+import sys
+
+
+class Config(ConfigParser.ConfigParser):
+    def __init__(self, filename):
+        ConfigParser.ConfigParser.__init__(self)
+        self.read(filename)
+
+    def optionxform(self, optionstr):
+        return optionstr
+
+
+class Expire(object):
+    RE_INTERNALDATE = re.compile(r'''INTERNALDATE "(?P<date>[^"]+)"''')
+
+    def __init__(self, options, config, name):
+        self.options = options
+        self.config = config
+        self.section = 'account %s' % (name,)
+        self.expires = 'expires %s' % (name,)
+
+    def connect(self):
+        if self.config.has_option(self.section, 'ssl') \
+            and self.config.getboolean(self.section, 'ssl'):
+            if self.config.has_option(self.section, 'port'):
+                port = self.config.getint(self.section, 'port')
+            else:
+                port = 993
+
+            self.server = imaplib.IMAP4_SSL(self.config.get(self.section,
+                'hostname'), port)
+
+        else:
+            if self.config.has_option(self.section, 'port'):
+                port = self.config.getint(self.section, 'port')
+            else:
+                port = 143
+
+            self.server = imaplib.IMAP4(self.config.get(self.section,
+                'hostname'), port)
+
+    def login(self):
+        username = self.config.get(self.section, 'username')
+        password = self.get_password()
+
+        if password:
+            self.server.login(username, password)
+        else:
+            raise RuntimeError('No password for account')
+
+    def get_password(self):
+        username = '@'.join([
+            self.config.get(self.section, 'username'),
+            self.config.get(self.section, 'hostname'),
+        ])
+        password = keyring.get_password('mail', username)
+        if password is None:
+            password = getpass.getpass('Password for %s: ' % (username,))
+            if password:
+                keyring.set_password('mail', username, password)
+
+        return password
+
+    def expire(self):
+        for option in self.config.options(self.expires):
+            days = self.config.getint(self.expires, option)
+            self.expire_folder(option, days)
+
+    def expire_folder(self, name, days):
+        print 'Expiring messages in "%s" odler than %d days' % (name, days)
+        stat, data = self.server.select(name)
+        if stat != 'OK':
+            raise Exception(' '.join(data))
+
+        # Set deleted flag on old messages
+        stat, data = self.server.search(None, 'ALL')
+        if stat != 'OK':
+            raise Exception(' '.join(data))
+
+        curr = datetime.datetime.now()
+        if self.options.verbose:
+            sys.stdout.write('running: ')
+            purged = 0
+
+        for num in data[0].split():
+            stat, data = self.server.fetch(num, '(INTERNALDATE)')
+            if stat != 'OK':
+                raise Exception(' '.join(data))
+
+            test = self.RE_INTERNALDATE.search(data[0])
+            if test:
+                info = test.groupdict()
+                # Strip UTC offset
+                if ' +' in info['date']:
+                    info['date'] = info['date'].split(' +', 1)[0]
+
+                date = datetime.datetime.strptime(info['date'],
+                    '%d-%b-%Y %H:%M:%S')
+                diff = curr - date
+                if diff.days >= days:
+                    if self.options.verbose:
+                        sys.stdout.write('d')
+                        purged += 1
+                        if purged % 100 == 0:
+                            sys.stdout.write(' (%d) ' % (purged,))
+
+                    self.server.store(num, '+FLAGS', '\\Deleted')
+                else:
+                    if self.options.verbose:
+                        sys.stdout.write('.')
+
+                if self.options.verbose:
+                    sys.stdout.flush()
+
+        # Really delete messages
+        if self.options.verbose:
+            sys.stdout.write(' done\n')
+        self.server.expunge()
+
+def run():
+    import optparse
+
+    parser = optparse.OptionParser()
+    parser.add_option('-a', '--accounts', default='all',
+        help='accounts to enable (default: all)')
+    parser.add_option('-c', '--config', default='expire.cfg',
+        help='configuration file')
+    parser.add_option('-v', '--verbose', default=False, action='store_true',
+        help='be verbose')
+
+    options, args = parser.parse_args()
+
+    config = Config(options.config)
+
+    if options.accounts == 'all':
+        options.accounts = [x.replace('account ', '')
+            for x in config.sections()
+            if x.startswith('account ')]
+    else:
+        options.accounts = options.accounts.split(',')
+
+    for account in options.accounts:
+        expire = Expire(options, config, account)
+        expire.connect()
+        expire.login()
+        expire.expire()
+
+if __name__ == '__main__':
+    sys.exit(run())
+

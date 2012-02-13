@@ -1,0 +1,9 @@
+[account imap.maze.io]
+hostname = imap.maze.io
+port     = 993
+ssl      = 1
+username = maze
+
+[expires imap.maze.io]
+INBOX.Trash          = 61
+INBOX.Systems.Cron   = 91
