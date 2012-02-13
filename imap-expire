@@ -4,7 +4,10 @@ import ConfigParser
 import datetime
 import getpass
 import imaplib
-import keyring
+try:
+    import keyring
+except ImportError:
+    keyring = None
 import os
 import re
 import sys
@@ -58,15 +61,23 @@ class Expire(object):
             raise RuntimeError('No password for account')
 
     def get_password(self):
-        username = '@'.join([
-            self.config.get(self.section, 'username'),
-            self.config.get(self.section, 'hostname'),
-        ])
-        password = keyring.get_password('mail', username)
-        if password is None:
-            password = getpass.getpass('Password for %s: ' % (username,))
-            if password:
-                keyring.set_password('mail', username, password)
+        if self.config.has_option(self.section, 'password'):
+            return self.config.get(self.section, 'password')
+
+        else:
+            username = '@'.join([
+                self.config.get(self.section, 'username'),
+                self.config.get(self.section, 'hostname'),
+            ])
+            if keyring:
+                password = keyring.get_password('mail', username)
+            else:
+                password = None
+
+            if password is None:
+                password = getpass.getpass('Password for %s: ' % (username,))
+                if keyring:
+                    keyring.set_password('mail', username, password)
 
         return password
 
