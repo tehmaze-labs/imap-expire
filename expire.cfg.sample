@@ -3,6 +3,8 @@ hostname = imap.maze.io
 port     = 993
 ssl      = 1
 username = maze
+; We use keyring, so password is not supplied from configuration
+;password = secret
 
 [expires imap.maze.io]
 INBOX.Trash          = 61
