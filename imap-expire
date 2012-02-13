@@ -90,7 +90,7 @@ class Expire(object):
             self.expire_folder(option, days, ordered)
 
     def expire_folder(self, name, days, ordered=False):
-        print 'Expiring messages in "%s" odler than %d days' % (name, days)
+        print 'Expiring messages in "%s" older than %d days' % (name, days)
         stat, data = self.server.select(name)
         if stat != 'OK':
             raise Exception(' '.join(data))
