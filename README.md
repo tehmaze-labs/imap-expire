@@ -9,6 +9,14 @@ Requirements
 ============
 
 * Python
+
+
+Optional
+========
+
+If you don't want to store unencrypted passwords in the configuration, you can
+also store they in a keyring implementation.
+
 * [Python keyring](http://pypi.python.org/pypi/keyring)
 * Some keyring implementation (Gnome Keyring, OSX KeyChain, etc.)
 
