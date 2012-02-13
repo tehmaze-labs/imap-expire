@@ -9,6 +9,8 @@ Requirements
 ============
 
 * Python
+* [http://pypi.python.org/pypi/keyring](Python keyring)
+* Some keyring implementation (Gnome Keyring, OSX KeyChain, etc.)
 
 
 Usage
