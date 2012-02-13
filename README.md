@@ -9,7 +9,7 @@ Requirements
 ============
 
 * Python
-* [http://pypi.python.org/pypi/keyring](Python keyring)
+* [Python keyring](http://pypi.python.org/pypi/keyring)
 * Some keyring implementation (Gnome Keyring, OSX KeyChain, etc.)
 
 
@@ -24,4 +24,4 @@ of the latter is "mailboxname = days".
 Bugs
 ====
 
-Use the [https://github.com/tehmaze/imap-expire/issues](GitHub issue tracker).
+Use the [GitHub issue tracker](https://github.com/tehmaze/imap-expire/issues).
